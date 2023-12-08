@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menu Display</title>
+</head>
+<body>
+    <h1>라면타임 & 간식류</h1>
+    {% if breakfast_menu_data %}
+        <ul>
+            {% for item in breakfast_menu_data %}
+                <h3>{{ item }}</h3>
+            {% endfor %}
+        </ul>
+    {% else %}
+    <h3>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;오늘은 운영하지 않습니다.</h3>
+    {% endif %}
+    <br>
+    <h1>단품 코너</h1>
+    {% if single_menu_data %}
+        <ul>
+            {% for item in single_menu_data %}
+                <h3>{{ item }}</h3>
+            {% endfor %}
+        </ul>
+    {% else %}
+    <h3>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;오늘은 운영하지 않습니다.</h3>
+    {% endif %}
+    <br>
+    <h1>오늘의 백반</h1>
+    {% if baekban_menu_data %}
+        <ul>
+            {% for item in baekban_menu_data %}
+                <h3>{{ item }}</h3>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <h3>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;오늘은 운영하지 않습니다.</h3>
+    {% endif %}
+    <br>
+
+    <h1>교직원 식당</h1>
+    {% if faculty_menu_data %}
+        <ul>
+            {% for item in faculty_menu_data %}
+                <h3>{{ item }}</h3>
+            {% endfor %}
+        </ul>
+    {% else %}
+    <h3>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;오늘은 운영하지 않습니다.</h3>
+    {% endif %}
+</body>
+</html>
