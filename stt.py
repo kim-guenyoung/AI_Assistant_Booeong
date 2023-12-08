@@ -9,6 +9,8 @@ import spidev
 import time
 import os
 import pygame
+import re
+import RPi.GPIO as GPIO
 import random
 
 
@@ -35,6 +37,12 @@ with open(student, 'r', encoding='utf-8') as file:
 
 
 
+def extract_numeric_part(text):
+    # Use regular expression to extract numeric part from the text
+    match = re.search(r'\b(\d+)\b', text)
+    if match:
+        return match.group(1)
+    return None
 
 
 
@@ -358,11 +366,54 @@ def main():
                 print("X: {}, Y: {}, SW: {}".format(vrx_pos, vry_pos, sw_val))
                 time.sleep(delay)
 
-            # pygame 종료
-            pygame.quit()
+                # pygame 종료
+                pygame.quit()
 
+      
+            
+        bz_pin = 18
 
-                
+        GPIO.setwarnings(False)
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setup(bz_pin, GPIO.OUT)
+
+        if "타이머" in transcript:
+            # Use regular expression to extract numeric part from the text
+            match = re.search(r'(\d+)', transcript)
+            if match:
+                numeric_part = match.group(1)
+                timer_duration = int(numeric_part)
+                print(f"{numeric_part}초 동안 타이머를 맞추었습니다.")
+                audio_response = generate_audio(f"{numeric_part}초 동안 타이머를 맞추었습니다.")
+                sound = AudioSegment.from_file(io.BytesIO(audio_response), format="wav")
+                play(sound)
+
+            try:
+                # Wait for the specified duration obtained from the transcript
+                time.sleep(timer_duration)
+
+                # Start the alarm loop
+                p = GPIO.PWM(bz_pin, 100)
+                Frq = [262, 330, 392, 330, 262, 1]
+                speed = 0.5
+
+                p.start(10)
+
+                while True:
+                    for fr in Frq:
+                        p.ChangeFrequency(fr)
+                        print("I'm running")
+                        time.sleep(0.5)
+
+                    time.sleep(1)
+
+            except KeyboardInterrupt:
+                pass
+
+            finally:
+                p.stop()
+                GPIO.cleanup()
+
 
         if "종료" in transcript:
             print("대화를 종료합니다.")
