@@ -12,7 +12,14 @@ import pygame
 import re
 import RPi.GPIO as GPIO
 import random
-
+from datetime import datetime
+import requests
+import subprocess
+import adafruit_ssd1306
+from PIL import Image, ImageDraw, ImageFont
+from board import SCL, SDA
+import busio
+import time
 
 text_to_speech = "/home/pi/lunch/iconic-aloe-403811-80800b7d7bd7.json"
 speech_to_text = "/home/pi/lunch/iconic-aloe-403811-fef393854188.json"
@@ -94,8 +101,6 @@ def main():
                     frames_per_buffer=CHUNK)
 
     print("* 녹음을 시작합니다. 3.5 초간 말하세요.")
-
-    
 
     while True:
         frames = []
@@ -380,9 +385,9 @@ def main():
         if "타이머" in transcript:
             # Use regular expression to extract numeric part from the text
             match = re.search(r'(\d+)', transcript)
+            numeric_part = match.group(1)
+            timer_duration = int(numeric_part)
             if match:
-                numeric_part = match.group(1)
-                timer_duration = int(numeric_part)
                 print(f"{numeric_part}초 동안 타이머를 맞추었습니다.")
                 audio_response = generate_audio(f"{numeric_part}초 동안 타이머를 맞추었습니다.")
                 sound = AudioSegment.from_file(io.BytesIO(audio_response), format="wav")
@@ -396,31 +401,108 @@ def main():
                 p = GPIO.PWM(bz_pin, 100)
                 Frq = [262, 330, 392, 330, 262, 1]
                 speed = 0.5
+                sw_channel = 0
+                
+                spi = spidev.SpiDev()
+                spi.open(0, 0)
+                spi.max_speed_hz = 100000
+                
+                i2c = busio.I2C(SCL, SDA)
+                x = 0
+                padding = -2
+                y = padding
 
-                p.start(10)
+                display = adafruit_ssd1306.SSD1306_I2C(128, 64, i2c)
 
-                while True:
-                    for fr in Frq:
-                        p.ChangeFrequency(fr)
-                        print("I'm running")
-                        time.sleep(0.5)
+                # OLED 화면 초기화
+                display.fill(0)
+                display.show()
 
-                    time.sleep(1)
+                font_size = 20
+
+                # Specify a font file and create a font with the desired size
+                font = ImageFont.truetype("FreeMono.ttf", font_size)
+
+                width = display.width
+                height = display.height
+                image = Image.new("1", (width, height))
+
+                draw = ImageDraw.Draw(image)
+                
+
+                numeric_part = timer_duration
+                try:
+                    while numeric_part >= 0:
+                        draw.rectangle((0, 0, width, height), outline=0, fill=0)  # Clear the screen
+                        draw.text((x, y), "Time: {}s".format(numeric_part), font=font, fill=255)
+                        display.image(image)
+                        display.show()
+
+                        for fr in Frq:
+                            p.ChangeFrequency(fr)
+                            
+                        time.sleep(0.9)
+                        numeric_part -= 1
+
+                except KeyboardInterrupt:
+                    pass
 
             except KeyboardInterrupt:
                 pass
 
             finally:
-                p.stop()
+                p.start(10)
+                while 1:
+                    for fr in Frq:
+                        p.ChangeFrequency(fr)
+                        time.sleep(0.5)
+                    time.sleep(1)
+                display.fill(0)
+                display.show()
                 GPIO.cleanup()
 
-
-        if "종료" in transcript:
-            print("대화를 종료합니다.")
-            audio_response = generate_audio("대화를 종료합니다. 이용해주셔서 감사합니다.")
+        if "날씨" in transcript:
+            audio_response = generate_audio("현재 날씨를 알려드립니다.")
             sound = AudioSegment.from_file(io.BytesIO(audio_response), format="wav")
             play(sound)
-            break
+            print("현재 날씨를 보여드립니다.")
+                        
+            current_datetime = datetime.now()
+            base_date = current_datetime.strftime("%Y%m%d")
+            base_time = current_datetime.strftime("%H00")
+
+            url = 'http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getUltraSrtNcst'
+            params ={'serviceKey' : '6gJTZlpAHG/BsVfQa7V9uirC088uzkuVL6BtWZgJKJQmxYLC3ULsEd0Pkj9bdk77MBBIrAtjjYo4uJ7tzOi/ow==', 'pageNo' : '1', 
+                    'numOfRows' : '10', 'dataType' : 'JSON', 'base_date' : "20231209", 'base_time' : "0400", 'nx' : '55', 'ny' : '127' }
+            response = requests.get(url, params=params) 
+
+
+            if (response.status_code >= 200) or (response.status_code < 300): 
+                r_dict = json.loads(response.text) 
+            
+                r_resultcode = r_dict["response"]["header"]["resultCode"]
+                r_item = r_dict["response"]["body"]["items"]["item"]
+
+                if r_resultcode == '00':
+                    for item in r_item:
+                        if (item.get("category") == "T1H"): 
+                            result = item
+                            obsr_value_str = result.get("obsrValue", "obsrValue not found")  # obsrValue 값을 가져옴
+                            obsr_value = float(obsr_value_str)  # 문자열을 실수로 변환
+                            print(obsr_value)
+                            time.sleep(5)
+                            audio_response = generate_audio(f"현재 날씨는 {obsr_value}도입니다.")
+                            sound = AudioSegment.from_file(io.BytesIO(audio_response), format="wav")
+                            play(sound)
+                            break
+
+            
+            if "종료" in transcript:
+                print("대화를 종료합니다.")
+                audio_response = generate_audio("대화를 종료합니다. 이용해주셔서 감사합니다.")
+                sound = AudioSegment.from_file(io.BytesIO(audio_response), format="wav")
+                play(sound)
+                break
 
     # else:
     #     print("무슨 말씀이신지 이해하지 못했습니다.")
