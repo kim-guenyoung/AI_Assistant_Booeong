@@ -283,7 +283,7 @@ def main():
             play(sound)
             
                         
-            delay = 1  # 루프 간격을 더 짧게 설정
+            delay = 0.5
 
             sw_channel = 0
             vrx_channel = 2
@@ -319,11 +319,15 @@ def main():
             prev_sw_val = 0
             current_song_index = 0
             is_music_playing = False
-            current_volume = 0.5  # 초기 볼륨 설정 (0.0에서 1.0 사이)
+            current_volume = 0.5
 
             # 초기 곡 재생
             pygame.mixer.music.set_volume(current_volume)
 
+            sw_val = readadc(sw_channel)
+            vrx_pos = readadc(vrx_channel)
+            vry_pos = readadc(vry_channel)
+            
             while True:
                 sw_val = readadc(sw_channel)
                 vrx_pos = readadc(vrx_channel)
@@ -357,10 +361,10 @@ def main():
 
                 # 조이스틱 위아래 이동에 따라 볼륨 극단적으로 조절
                 if vry_pos < 500:
-                    current_volume = min(1.0, current_volume * 1.5)
+                    current_volume = current_volume * 1.5
                     # 볼륨은 0.0에서 1.0 사이의 값으로 설정
                 if vry_pos > 800:
-                    current_volume = max(0.0, current_volume * 0.5)
+                    current_volume = current_volume * 0.5
 
                 # 실제로 볼륨 조절
                 pygame.mixer.music.set_volume(current_volume)
@@ -371,8 +375,8 @@ def main():
                 print("X: {}, Y: {}, SW: {}".format(vrx_pos, vry_pos, sw_val))
                 time.sleep(delay)
 
-                # pygame 종료
-                pygame.quit()
+            # pygame 종료
+            pygame.quit()
 
       
             
